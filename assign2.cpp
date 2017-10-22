@@ -10,8 +10,31 @@
 #include <GLUT/glut.h>
 #include "pic.h"
 #include <math.h>  
+#include <iostream>
+#include <string>
+#include <cstring>
 
 int g_iMenuId;
+
+int g_vMousePos[2] = {0, 0};
+int g_iLeftMouseButton = 0;    /* 1 if pressed, 0 if not */
+int g_iMiddleMouseButton = 0;
+int g_iRightMouseButton = 0;
+
+
+int screenshotNum = 0;
+
+typedef enum { ROTATE, TRANSLATE, SCALE } CONTROLSTATE;
+typedef enum {SOLID_TRIANGLES, VERTICES, WIREFRAMES} RENDERMODE;
+
+CONTROLSTATE g_ControlState = ROTATE;
+RENDERMODE g_RenderMode = WIREFRAMES;
+
+/* state of the world */
+float g_vLandRotate[3] = {0.0, 0.0, 0.0};
+float g_vLandTranslate[3] = {0.0, 0.0, 0.0};
+float g_vLandScale[3] = {1.0, 1.0, 1.0};
+
 /* represents one control point along the spline */
 struct point {
    double x;
@@ -86,6 +109,35 @@ int loadSplines(char *argv) {
   return 0;
 }
 
+/* Write a screenshot to the specified filename */
+void saveScreenshot (char *filename)
+{
+  int i, j;
+  Pic *in = NULL;
+
+  if (filename == NULL)
+    return;
+
+  /* Allocate a picture buffer */
+  in = pic_alloc(640, 480, 3, NULL);
+
+  printf("File to save to: %s\n", filename);
+
+  for (i=479; i>=0; i--) {
+    glReadPixels(0, 479-i, 640, 1, GL_RGB, GL_UNSIGNED_BYTE,
+                 &in->pix[i*in->nx*in->bpp]);
+  }
+
+  if (jpeg_write(filename, in))
+    printf("File saved Successfully\n");
+  else
+    printf("Error in Saving\n");
+
+  pic_free(in);
+  delete[] filename;
+}
+
+
 void init()
 {
     glClearColor(0.0, 0.0, 0.0, 0.0);   // set background color
@@ -106,7 +158,7 @@ void reshape(int width, int height)
    glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
    glLoadIdentity();             // Reset
    // Enable perspective projection with fovy, aspect, zNear and zFar
-   gluPerspective(20.0f, aspect, 0.01f, 1000.0f);
+   gluPerspective(60.0f, aspect, 0.01f, 1000.0f);
 
    glMatrixMode(GL_MODELVIEW);
    //glLoadIdentity();
@@ -162,7 +214,30 @@ rotation/translation/scaling */
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glLoadIdentity(); // reset transformation
 
-   gluLookAt(0.0, 0.0,22.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+   gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+
+   if(g_RenderMode == SOLID_TRIANGLES)
+      glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+   else if (g_RenderMode == VERTICES)
+      glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
+   else   
+    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+   
+    glPushMatrix();
+    // start applying the transformations
+    glTranslatef(0.0f, 0.0f, 0.0f);
+    glRotatef(45.0, 0.0f, 0.0f, 0.0f);
+    glRotatef(g_vLandRotate[0], 1.0,0.0,0.0);
+    glRotatef(g_vLandRotate[1], 0.0,1.0,0.0);
+    glRotatef(g_vLandRotate[2], 0.0,0.0,1.0);
+   
+
+ 
+    glTranslatef(g_vLandTranslate[0], g_vLandTranslate[1], g_vLandTranslate[2]);
+  
+
+  
+    glScaled(g_vLandScale[0], g_vLandScale[1], g_vLandScale[2]);
   
     //glEnd();
 
@@ -215,11 +290,130 @@ rotation/translation/scaling */
   }
 
  // glPopMatrix();
-    
+   glPopMatrix();
   glutSwapBuffers(); // double buffer flush
 
 }
 
+void doIdle()
+{
+  /* do some stuff... */
+
+  /* make the screen update */
+  glutPostRedisplay();
+}
+
+/* used to change rendermode state variable*/
+void processSpecialKeys(int key, int x, int y) {
+
+  switch(key) {
+    case GLUT_KEY_F1 :
+        g_RenderMode = WIREFRAMES; 
+        std::cout << "pressed f1 " << std::endl;
+        break;
+    case GLUT_KEY_F2 :
+        g_RenderMode = SOLID_TRIANGLES;
+        std::cout << "pressed f2 " << std::endl;
+        break;
+    case GLUT_KEY_F3 :
+        g_RenderMode = VERTICES; 
+        std::cout << "pressed f3 " << std::endl;
+        break;
+    case GLUT_KEY_F4 :
+
+     std::string pi = std::to_string(screenshotNum) + ".jpg";
+    char *y = new char[pi.length() + 1]; 
+    std::strcpy(y, pi.c_str());
+        saveScreenshot(y);
+        screenshotNum++;
+        break;
+  }
+}
+
+/* converts mouse drags into information about 
+rotation/translation/scaling */
+void mousedrag(int x, int y)
+{
+  int vMouseDelta[2] = {x-g_vMousePos[0], y-g_vMousePos[1]};
+  
+  switch (g_ControlState)
+  {
+    case TRANSLATE:  
+      if (g_iLeftMouseButton)
+      {
+        g_vLandTranslate[0] += vMouseDelta[0]*0.01;
+        g_vLandTranslate[1] -= vMouseDelta[1]*0.01;
+      }
+      if (g_iMiddleMouseButton)
+      {
+        g_vLandTranslate[2] += vMouseDelta[1]*0.01;
+      }
+      break;
+    case ROTATE:
+      if (g_iLeftMouseButton)
+      {
+        g_vLandRotate[0] += vMouseDelta[1];
+        g_vLandRotate[1] += vMouseDelta[0];
+      }
+      if (g_iMiddleMouseButton)
+      {
+        g_vLandRotate[2] += vMouseDelta[1];
+      }
+      break;
+    case SCALE:
+      if (g_iLeftMouseButton)
+      {
+        g_vLandScale[0] *= 1.0+vMouseDelta[0]*0.01;
+        g_vLandScale[1] *= 1.0-vMouseDelta[1]*0.01;
+      }
+      if (g_iMiddleMouseButton)
+      {
+        g_vLandScale[2] *= 1.0-vMouseDelta[1]*0.01;
+      }
+      break;
+  }
+  g_vMousePos[0] = x;
+  g_vMousePos[1] = y;
+}
+
+void mouseidle(int x, int y)
+{
+  g_vMousePos[0] = x;
+  g_vMousePos[1] = y;
+}
+
+void mousebutton(int button, int state, int x, int y)
+{
+
+  switch (button)
+  {
+    case GLUT_LEFT_BUTTON:
+      g_iLeftMouseButton = (state==GLUT_DOWN);
+      break;
+    case GLUT_MIDDLE_BUTTON:
+      g_iMiddleMouseButton = (state==GLUT_DOWN);
+      break;
+    case GLUT_RIGHT_BUTTON:
+      g_iRightMouseButton = (state==GLUT_DOWN);
+      break;
+  }
+ 
+  switch(glutGetModifiers())
+  {
+    case GLUT_ACTIVE_CTRL:
+      g_ControlState = TRANSLATE;
+      break;
+    case GLUT_ACTIVE_SHIFT:
+      g_ControlState = SCALE;
+      break;
+    default:
+      g_ControlState = ROTATE;
+      break;
+  }
+
+  g_vMousePos[0] = x;
+  g_vMousePos[1] = y;
+}
 
 
 int main (int argc, char ** argv)
@@ -269,6 +463,18 @@ int main (int argc, char ** argv)
   
   /* replace with any animate code */
  // glutIdleFunc(doIdle);
+
+glutIdleFunc(doIdle);
+
+  /* callback for mouse drags */
+  glutMotionFunc(mousedrag);
+  /* callback for idle mouse movement */
+  glutPassiveMotionFunc(mouseidle);
+  /* callback for mouse button changes */
+  glutMouseFunc(mousebutton);
+
+  /**callback for special keys*/
+  glutSpecialFunc(processSpecialKeys);
 
  
 
