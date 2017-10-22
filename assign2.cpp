@@ -9,6 +9,7 @@
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
 #include "pic.h"
+#include <math.h>  
 
 int g_iMenuId;
 /* represents one control point along the spline */
@@ -29,7 +30,10 @@ struct spline *g_Splines;
 
 /* total number of splines */
 int g_iNumOfSplines;
-
+float b_m_3[] = {-0.5, 1.5, -1.5, 0.5};
+float b_m_2[] = {1.0, -2.5, 2.0, -0.5};
+float b_m_1[] = {-0.5, 0.0, 0.5, 0.0};
+float b_m_0[] = {0.0, 1.0, 0.0, 0.0};
 
 int loadSplines(char *argv) {
   char *cName = (char *)malloc(128 * sizeof(char));
@@ -125,6 +129,26 @@ void menufunc(int value)
   }
 }
 
+point catmull (point p1, point p2, point p3, point p4, float u){
+  point newPoint;
+  newPoint.x = ((pow(u,3)) * (b_m_3[0]*(p1.x) + b_m_3[1]*(p2.x) + b_m_3[2]*(p3.x) + b_m_3[3]*(p4.x)))
+             + ((pow(u,2)) * (b_m_2[0]*(p1.x) + b_m_2[1]*(p2.x) + b_m_2[2]*(p3.x) + b_m_2[3]*(p4.x)))
+             + ((pow(u,1)) * (b_m_1[0]*(p1.x) + b_m_1[1]*(p2.x) + b_m_1[2]*(p3.x) + b_m_1[3]*(p4.x)))
+             + ((pow(u,0)) * (b_m_0[0]*(p1.x) + b_m_0[1]*(p2.x) + b_m_0[2]*(p3.x) + b_m_0[3]*(p4.x)));
+
+  newPoint.y = ((pow(u,3)) * (b_m_3[0]*(p1.y) + b_m_3[1]*(p2.y) + b_m_3[2]*(p3.y) + b_m_3[3]*(p4.y)))
+             + ((pow(u,2)) * (b_m_2[0]*(p1.y) + b_m_2[1]*(p2.y) + b_m_2[2]*(p3.y) + b_m_2[3]*(p4.y)))
+             + ((pow(u,1)) * (b_m_1[0]*(p1.y) + b_m_1[1]*(p2.y) + b_m_1[2]*(p3.y) + b_m_1[3]*(p4.y)))
+             + ((pow(u,0)) * (b_m_0[0]*(p1.y) + b_m_0[1]*(p2.y) + b_m_0[2]*(p3.y) + b_m_0[3]*(p4.y)));
+
+  newPoint.z = ((pow(u,3)) * (b_m_3[0]*(p1.z) + b_m_3[1]*(p2.z) + b_m_3[2]*(p3.z) + b_m_3[3]*(p4.z)))
+             + ((pow(u,2)) * (b_m_2[0]*(p1.z) + b_m_2[1]*(p2.z) + b_m_2[2]*(p3.z) + b_m_2[3]*(p4.z)))
+             + ((pow(u,1)) * (b_m_1[0]*(p1.z) + b_m_1[1]*(p2.z) + b_m_1[2]*(p3.z) + b_m_1[3]*(p4.z)))
+             + ((pow(u,0)) * (b_m_0[0]*(p1.z) + b_m_0[1]*(p2.z) + b_m_0[2]*(p3.z) + b_m_0[3]*(p4.z)));
+
+  return newPoint;
+}
+
 void display()
 {
   /* draw 1x1 cube about origin */
@@ -138,11 +162,11 @@ rotation/translation/scaling */
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glLoadIdentity(); // reset transformation
 
-   gluLookAt(0.0, 0.0,8.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+   gluLookAt(0.0, 0.0,22.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
   
     //glEnd();
 
-  glBegin(GL_POLYGON);
+  /*glBegin(GL_POLYGON);
 
   glColor3f(1.0, 1.0, 1.0);
   glVertex3f(-0.5, -0.5, 0.0);
@@ -153,13 +177,50 @@ rotation/translation/scaling */
   glColor3f(1.0, 1.0, 0.0);
   glVertex3f(0.5, -0.5, 0.0);
 
-  glEnd();
+  glEnd();*/
+
+  for (int i = 0; i < g_iNumOfSplines; i++){
+    spline curr = g_Splines[i];
+    int curr_controlpoints = curr.numControlPoints;
+
+    glBegin(GL_LINES);
+    for (int i = 0; i < curr_controlpoints-1; i++){
+      point p1;
+      point p2;
+      point p3;
+      point p4;
+
+      if(i == 0)
+      {
+        continue;
+      } 
+
+      else if ( i + 2 >= curr_controlpoints){
+        continue;
+      }
+
+      else{
+        p1 = curr.points[i-1]; p4 = curr.points[i+2];
+      }
+
+      p2 = curr.points[i]; p3 = curr.points[i+1];
+
+      for (float u = 0.0 ; u <= 1.0; u+= 0.0001){
+          point p = catmull(p1,p2,p3,p4,u);
+          glColor3f(1.0, 1.0, 1.0);
+          glVertex3f(p.x, p.y, p.z);
+      }
+    }
+    glEnd();
+  }
 
  // glPopMatrix();
     
   glutSwapBuffers(); // double buffer flush
 
 }
+
+
 
 int main (int argc, char ** argv)
 {

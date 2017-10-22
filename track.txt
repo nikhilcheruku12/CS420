@@ -1,2 +1,5 @@
-1
+4
+splines/rollerCoaster.sp
+splines/goodRide.sp
+splines/upsidedown.sp
 splines/circle.sp
