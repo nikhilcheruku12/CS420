@@ -20,7 +20,7 @@ int g_vMousePos[2] = {0, 0};
 int g_iLeftMouseButton = 0;    /* 1 if pressed, 0 if not */
 int g_iMiddleMouseButton = 0;
 int g_iRightMouseButton = 0;
-
+char* files[6] = {"sky2.jpg","sky2.jpg","sky2.jpg","sky2.jpg","ground.jpg","sky2.jpg"};
 
 int screenshotNum = 0;
 
@@ -29,7 +29,7 @@ typedef enum {SOLID_TRIANGLES, VERTICES, WIREFRAMES} RENDERMODE;
 
 CONTROLSTATE g_ControlState = ROTATE;
 RENDERMODE g_RenderMode = SOLID_TRIANGLES;
-
+GLuint texture[6];
 /* state of the world */
 float g_vLandRotate[3] = {0.0, 0.0, 0.0};
 float g_vLandTranslate[3] = {0.0, 0.0, 0.0};
@@ -109,11 +109,36 @@ int loadSplines(char *argv) {
   return 0;
 }
 
+void texload(int i,char *filename)
+{
+
+   Pic* img;
+   img = jpeg_read(filename, NULL);
+   glBindTexture(GL_TEXTURE_2D, texture[i]);
+   std::cout << "image size = " << img->nx << " x " << img->ny << std::endl;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   std::cout << filename << std::endl;
+   glTexImage2D(GL_TEXTURE_2D,
+   0,
+  GL_RGB,
+   img->nx,
+   img->ny,
+   0,
+  GL_RGB,
+  GL_UNSIGNED_BYTE,
+   &img->pix[0]);
+   pic_free(img);
+}
+
+
 void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloat edgeLength)
 {
     GLfloat halfSideLength = edgeLength * 0.5f;
 
-    GLfloat vertices[] =
+    GLfloat vertices2[] =
     {
         // front face
         centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
@@ -152,7 +177,95 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
         centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength  // bottom left
     };
 
-    GLfloat colour[] = {
+   GLfloat vertices[] =
+    {
+        // front face
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // back face
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom left
+
+        // left face
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // right face
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+
+        // top face
+         -100, -100, 100, // top left
+        -100, 100, 100, // top right
+        100, -100, 100, // bottom right
+        100, 100, 100 
+
+        // bottom face                                                                                                                                                                           // right face
+        -100, -100, -100, // top left
+        -100, 100, -100, // top right
+        100, -100, -100, // bottom right
+        100, 100, -100, // bottom left                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength  // bottom left
+    };
+
+   for (int i = 60; i < 72; i+=3){
+      std::cout << "{" << vertices[i] << " , " << vertices[i+1] << ", " << vertices[i+2] << "}" << std::endl;
+
+    }
+    for (int j = 0; j < 6; j++){
+
+      texload(j,files[j]);
+      glEnable(GL_TEXTURE_2D);
+
+      glBindTexture(GL_TEXTURE_2D, texture[j]);
+       glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+       glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
+      
+      int i = j*12;
+      
+
+      glBegin(GL_POLYGON);
+       glTexCoord2f(1.0, 0.0);
+       glVertex3f(vertices2[i], vertices2[i+1], vertices2[i+2]);
+       glTexCoord2f(0.0, 0.0);
+       glVertex3f(vertices2[i+3], vertices2[i+4], vertices2[i+5]);
+       glTexCoord2f(0.0, 1.0);
+       glVertex3f(vertices2[i+6], vertices2[i+7], vertices2[i+8]);
+       glTexCoord2f(1.0, 1.0);
+       glVertex3f(vertices2[i+9], vertices2[i+10], vertices2[i+11]);
+       glEnd();
+      glDisable(GL_TEXTURE_2D);
+    }
+
+    /*glEnable(GL_TEXTURE_2D);
+
+  glBindTexture(GL_TEXTURE_2D, texture[0]);
+   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
+  
+  
+  
+
+  glBegin(GL_POLYGON);
+   glTexCoord2f(1.0, 0.0);
+   glVertex3f(100.0, 100.0, 100.0);
+   glTexCoord2f(0.0, 0.0);
+   glVertex3f(-100.0, 100.0, 100.0);
+   glTexCoord2f(0.0, 1.0);
+   glVertex3f(-100.0, 100.0, -100.0);
+   glTexCoord2f(1.0, 1.0);
+   glVertex3f(100.0, 100.0, -100.0);
+   glEnd();
+  glDisable(GL_TEXTURE_2D);*/
+   /*GLfloat colour[] = {
         255, 0, 0,
         255, 0, 0,
         255, 0, 0,
@@ -185,32 +298,9 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
     glColorPointer(3, GL_FLOAT, 0, colour);
     glDrawArrays(GL_QUADS, 0, 24);
     glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);*/
 }
-GLuint texture[1];
-void texload(int i,char *filename)
-{
 
-   Pic* img;
-   img = jpeg_read(filename, NULL);
-   glBindTexture(GL_TEXTURE_2D, texture[i]);
-   std::cout << "image size = " << img->nx << " x " << img->ny << std::endl;
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   std::cout << filename << std::endl;
-   glTexImage2D(GL_TEXTURE_2D,
-   0,
-  GL_RGB,
-   img->nx,
-   img->ny,
-   0,
-  GL_RGB,
-  GL_UNSIGNED_BYTE,
-   &img->pix[0]);
-   pic_free(img);
-}
 
 /* Write a screenshot to the specified filename */
 void saveScreenshot (char *filename)
@@ -241,15 +331,7 @@ void saveScreenshot (char *filename)
 }
 
 
-void init()
-{
-    glClearColor(0.0, 0.0, 0.0, 0.0);   // set background color
-    glEnable(GL_DEPTH_TEST);            // enable depth buffering
-    glShadeModel(GL_SMOOTH);            // interpolate colors during rasterization
 
-    glGenTextures(1, texture);
-    texload(0,"ground.jpg");
-}
 
 void reshape(int width, int height)
 {
@@ -276,8 +358,14 @@ void myinit()
     glEnable(GL_DEPTH_TEST);            // enable depth buffering
     glShadeModel(GL_SMOOTH); 
 
-    glGenTextures(1, texture);
-    texload(0,"ground.jpg");
+    glGenTextures(6, texture);
+    /*texload(0,"sky2.jpg");
+    texload(1,"sky2.jpg");
+    texload(2,"sky2.jpg");
+    texload(3,"sky2.jpg");
+    texload(4,"sky2.jpg");
+    texload(5,"ground.jpg");*/
+
 
     /*glBindTexture(GL_TEXTURE_2D, texture[0]);
    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
@@ -355,8 +443,8 @@ rotation/translation/scaling */
   
     glScaled(g_vLandScale[0], g_vLandScale[1], g_vLandScale[2]);
  
- //DrawCube(0.0f,0.0f,0.0f,200.0f);
-  glEnable(GL_TEXTURE_2D);
+  DrawCube(0.0f,0.0f,0.0f,200.0f);
+  /*glEnable(GL_TEXTURE_2D);
 
   glBindTexture(GL_TEXTURE_2D, texture[0]);
    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
@@ -367,15 +455,15 @@ rotation/translation/scaling */
 
   glBegin(GL_POLYGON);
    glTexCoord2f(1.0, 0.0);
-   glVertex3f(1.0, 1.0, 1.0);
+   glVertex3f(100.0, 100.0, 100.0);
    glTexCoord2f(0.0, 0.0);
-   glVertex3f(-1.0, 1.0, 1.0);
+   glVertex3f(-100.0, 100.0, 100.0);
    glTexCoord2f(0.0, 1.0);
-   glVertex3f(-1.0, 1.0, -1.0);
+   glVertex3f(-100.0, 100.0, -100.0);
    glTexCoord2f(1.0, 1.0);
-   glVertex3f(1.0, 1.0, -1.0);
+   glVertex3f(100.0, 100.0, -100.0);
    glEnd();
-  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_TEXTURE_2D);*/
 
   for (int i = 0; i < g_iNumOfSplines; i++){
     spline curr = g_Splines[i];
