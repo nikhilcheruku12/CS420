@@ -34,7 +34,9 @@ GLuint texture[6];
 float g_vLandRotate[3] = {0.0, 0.0, 0.0};
 float g_vLandTranslate[3] = {0.0, 0.0, 0.0};
 float g_vLandScale[3] = {1.0, 1.0, 1.0};
+int a = 1;
 
+int tngt_idx = 0;
 /* represents one control point along the spline */
 struct point {
    double x;
@@ -58,6 +60,15 @@ float b_m_2[] = {1.0, -2.5, 2.0, -0.5};
 float b_m_1[] = {-0.5, 0.0, 0.5, 0.0};
 float b_m_0[] = {0.0, 1.0, 0.0, 0.0};
 
+
+float t_m_2[] = {-1.5,4.5,-7.5,1.5};
+float t_m_1[] = {2.0,-5.0,4.0,-1.0};
+
+point* tangent;
+point* binormal;
+point* normal;
+point* center;
+point* eye;
 int loadSplines(char *argv) {
   char *cName = (char *)malloc(128 * sizeof(char));
   FILE *fileList;
@@ -71,6 +82,8 @@ int loadSplines(char *argv) {
     printf ("can't open file\n");
     exit(1);
   }
+
+
   
   /* stores the number of splines in a global variable */
   fscanf(fileList, "%d", &g_iNumOfSplines);
@@ -108,6 +121,47 @@ int loadSplines(char *argv) {
 
   return 0;
 }
+point catmull (point p1, point p2, point p3, point p4, float u){
+  point newPoint;
+  newPoint.x = ((pow(u,3)) * (b_m_3[0]*(p1.x) + b_m_3[1]*(p2.x) + b_m_3[2]*(p3.x) + b_m_3[3]*(p4.x)))
+             + ((pow(u,2)) * (b_m_2[0]*(p1.x) + b_m_2[1]*(p2.x) + b_m_2[2]*(p3.x) + b_m_2[3]*(p4.x)))
+             + ((pow(u,1)) * (b_m_1[0]*(p1.x) + b_m_1[1]*(p2.x) + b_m_1[2]*(p3.x) + b_m_1[3]*(p4.x)))
+             + ((pow(u,0)) * (b_m_0[0]*(p1.x) + b_m_0[1]*(p2.x) + b_m_0[2]*(p3.x) + b_m_0[3]*(p4.x)));
+
+  newPoint.y = ((pow(u,3)) * (b_m_3[0]*(p1.y) + b_m_3[1]*(p2.y) + b_m_3[2]*(p3.y) + b_m_3[3]*(p4.y)))
+             + ((pow(u,2)) * (b_m_2[0]*(p1.y) + b_m_2[1]*(p2.y) + b_m_2[2]*(p3.y) + b_m_2[3]*(p4.y)))
+             + ((pow(u,1)) * (b_m_1[0]*(p1.y) + b_m_1[1]*(p2.y) + b_m_1[2]*(p3.y) + b_m_1[3]*(p4.y)))
+             + ((pow(u,0)) * (b_m_0[0]*(p1.y) + b_m_0[1]*(p2.y) + b_m_0[2]*(p3.y) + b_m_0[3]*(p4.y)));
+
+  newPoint.z = ((pow(u,3)) * (b_m_3[0]*(p1.z) + b_m_3[1]*(p2.z) + b_m_3[2]*(p3.z) + b_m_3[3]*(p4.z)))
+             + ((pow(u,2)) * (b_m_2[0]*(p1.z) + b_m_2[1]*(p2.z) + b_m_2[2]*(p3.z) + b_m_2[3]*(p4.z)))
+             + ((pow(u,1)) * (b_m_1[0]*(p1.z) + b_m_1[1]*(p2.z) + b_m_1[2]*(p3.z) + b_m_1[3]*(p4.z)))
+             + ((pow(u,0)) * (b_m_0[0]*(p1.z) + b_m_0[1]*(p2.z) + b_m_0[2]*(p3.z) + b_m_0[3]*(p4.z)));
+
+  return newPoint;
+}
+
+
+point make_unit (point p){
+    float divisor = sqrt (pow(p.x,2) + pow(p.y,2) + pow(p.z,2));
+    if(divisor == 0)
+    {
+      p.x = 0; p.y = 0; p.z = 0;
+      return p;
+    }
+    p.x = p.x / divisor;
+    p.y = p.y / divisor;
+    p.z = p.z / divisor;
+    return p;
+  }
+
+  point cross_product (point u, point v){
+     point product;
+      product.x = u.x * v.z - v.y * u.z;
+      product.y = v.x * u.z - u.x * v.z;
+      product.z = u.x * v.y - v.x * u.y;
+      return make_unit(product);
+  }
 
 void texload(int i,char *filename)
 {
@@ -115,12 +169,12 @@ void texload(int i,char *filename)
    Pic* img;
    img = jpeg_read(filename, NULL);
    glBindTexture(GL_TEXTURE_2D, texture[i]);
-   std::cout << "image size = " << img->nx << " x " << img->ny << std::endl;
+  // std::cout << "image size = " << img->nx << " x " << img->ny << std::endl;
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   std::cout << filename << std::endl;
+  // std::cout << filename << std::endl;
    glTexImage2D(GL_TEXTURE_2D,
    0,
   GL_RGB,
@@ -133,6 +187,43 @@ void texload(int i,char *filename)
    pic_free(img);
 }
 
+point getCenter (point tangent1, point catmull1){
+  point center1;
+  center1.x = catmull1.x + a*tangent1.x;
+  center1.y = catmull1.y + a*tangent1.y;
+  center1.z = catmull1.z + a*tangent1.z;
+  return center1;
+}
+point getTangent (float u , point p1, point p2, point p3, point p4){
+  point tangent1;
+  tangent1.x = (pow(u,2)) * (t_m_2[0]*p1.x + t_m_2[1]*p2.x + t_m_2[2]*p3.x + t_m_2[3]*p4.x) +
+               (pow(u,1)) * (t_m_1[0]*p1.x + t_m_1[1]*p2.x + t_m_1[2]*p3.x + t_m_1[3]*p4.x);
+  tangent1.y = (pow(u,2)) * (t_m_2[0]*p1.y + t_m_2[1]*p2.y + t_m_2[2]*p3.y + t_m_2[3]*p4.y) +
+               (pow(u,1)) * (t_m_1[0]*p1.y + t_m_1[1]*p2.y + t_m_1[2]*p3.y + t_m_1[3]*p4.y);
+  tangent1.z = (pow(u,2)) * (t_m_2[0]*p1.z + t_m_2[1]*p2.z + t_m_2[2]*p3.z + t_m_2[3]*p4.z) +
+               (pow(u,1)) * (t_m_1[0]*p1.z + t_m_1[1]*p2.z + t_m_1[2]*p3.z + t_m_1[3]*p4.z);
+  return make_unit(tangent1);
+}
+
+point getTangent2 (point p1, point p2, point p3, point p4, float u){
+  point newPoint;
+  newPoint.x = ((3*pow(u,2)) * (b_m_3[0]*(p1.x) + b_m_3[1]*(p2.x) + b_m_3[2]*(p3.x) + b_m_3[3]*(p4.x)))
+             + ((2*pow(u,1)) * (b_m_2[0]*(p1.x) + b_m_2[1]*(p2.x) + b_m_2[2]*(p3.x) + b_m_2[3]*(p4.x)))
+             + ((pow(u,0)) * (b_m_1[0]*(p1.x) + b_m_1[1]*(p2.x) + b_m_1[2]*(p3.x) + b_m_1[3]*(p4.x)))
+             ;
+
+ newPoint.y = ((3*pow(u,2)) * (b_m_3[0]*(p1.y) + b_m_3[1]*(p2.y) + b_m_3[2]*(p3.y) + b_m_3[3]*(p4.y)))
+             + ((2*pow(u,1)) * (b_m_2[0]*(p1.y) + b_m_2[1]*(p2.y) + b_m_2[2]*(p3.y) + b_m_2[3]*(p4.y)))
+             + ((pow(u,0)) * (b_m_1[0]*(p1.y) + b_m_1[1]*(p2.y) + b_m_1[2]*(p3.y) + b_m_1[3]*(p4.y)))
+             ;
+ newPoint.z = ((3*pow(u,2)) * (b_m_3[0]*(p1.z) + b_m_3[1]*(p2.z) + b_m_3[2]*(p3.z) + b_m_3[3]*(p4.z)))
+             + ((2*pow(u,1)) * (b_m_2[0]*(p1.z) + b_m_2[1]*(p2.z) + b_m_2[2]*(p3.z) + b_m_2[3]*(p4.z)))
+             + ((pow(u,0)) * (b_m_1[0]*(p1.z) + b_m_1[1]*(p2.z) + b_m_1[2]*(p3.z) + b_m_1[3]*(p4.z)))
+             ;
+
+
+  return make_unit(newPoint);
+}
 
 void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloat edgeLength)
 {
@@ -177,52 +268,10 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
         centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength  // bottom left
     };
 
-   GLfloat vertices[] =
-    {
-        // front face
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
-        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top right
-        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
 
-        // back face
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top left
-        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
-        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom left
-
-        // left face
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
-
-        // right face
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
-
-        // top face
-         -100, -100, 100, // top left
-        -100, 100, 100, // top right
-        100, -100, 100, // bottom right
-        100, 100, 100 
-
-        // bottom face                                                                                                                                                                           // right face
-        -100, -100, -100, // top left
-        -100, 100, -100, // top right
-        100, -100, -100, // bottom right
-        100, 100, -100, // bottom left                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right                                                                                                                                                                                                                                                                                                                                                                                                                                                  centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength  // bottom left
-    };
-
-   for (int i = 60; i < 72; i+=3){
-      std::cout << "{" << vertices[i] << " , " << vertices[i+1] << ", " << vertices[i+2] << "}" << std::endl;
-
-    }
     for (int j = 0; j < 6; j++){
 
-      texload(j,files[j]);
+     // texload(j,files[j]);
       glEnable(GL_TEXTURE_2D);
 
       glBindTexture(GL_TEXTURE_2D, texture[j]);
@@ -245,60 +294,7 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
       glDisable(GL_TEXTURE_2D);
     }
 
-    /*glEnable(GL_TEXTURE_2D);
 
-  glBindTexture(GL_TEXTURE_2D, texture[0]);
-   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  
-  
-  
-
-  glBegin(GL_POLYGON);
-   glTexCoord2f(1.0, 0.0);
-   glVertex3f(100.0, 100.0, 100.0);
-   glTexCoord2f(0.0, 0.0);
-   glVertex3f(-100.0, 100.0, 100.0);
-   glTexCoord2f(0.0, 1.0);
-   glVertex3f(-100.0, 100.0, -100.0);
-   glTexCoord2f(1.0, 1.0);
-   glVertex3f(100.0, 100.0, -100.0);
-   glEnd();
-  glDisable(GL_TEXTURE_2D);*/
-   /*GLfloat colour[] = {
-        255, 0, 0,
-        255, 0, 0,
-        255, 0, 0,
-        255, 0, 0,
-        0, 255, 0,
-        0, 255, 0,
-        0, 255, 0,
-        0, 255, 0,
-        0, 0, 255,
-        0, 0, 255,
-        0, 0, 255,
-        0, 0, 255,
-        100,100,100,
-        100,100,100,
-        100,100,100,
-        100,100,100,
-        200,200,200,
-        200,200,200,
-        200,200,200,
-        200,200,200,
-        40,220,75,
-        40,220,75,
-        40,220,75,
-        40,220,75,
-    };
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, vertices);
-    glColorPointer(3, GL_FLOAT, 0, colour);
-    glDrawArrays(GL_QUADS, 0, 24);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);*/
 }
 
 
@@ -352,6 +348,51 @@ void reshape(int width, int height)
    //glLoadIdentity();
 }
 
+void fillArrays (){
+  spline curr = g_Splines[0];
+  int curr_controlpoints = curr.numControlPoints;
+
+   
+    for (int i = 0; i < curr_controlpoints-1; i++){
+      point p1;
+      point p2;
+      point p3;
+      point p4;
+
+      if(i == 0)
+      {
+        continue;
+      } 
+
+      else if ( i + 2 >= curr_controlpoints){
+        continue;
+      }
+
+      else{
+        p1 = curr.points[i-1]; p4 = curr.points[i+2];
+      }
+
+      p2 = curr.points[i]; p3 = curr.points[i+1];
+      for (float u = 0.0 ; u <= 1.0; u+= 0.001){
+          tangent[tngt_idx] = getTangent2(p1,p2,p3,p4,u);
+          if(tngt_idx == 0){
+            point v; v.x = 1; v.y = 1; v.z = 1;
+            v = make_unit(v);
+            normal[tngt_idx] = cross_product(v, tangent[tngt_idx]);
+          }
+          else{
+            normal[tngt_idx] = cross_product(binormal[tngt_idx-1], tangent[tngt_idx]);
+          }
+          
+          binormal[tngt_idx] = cross_product(normal[tngt_idx],tangent[tngt_idx]);
+          eye[tngt_idx] = catmull(p1,p2,p3,p4,u);
+          center[tngt_idx] = getCenter(tangent[tngt_idx], eye[tngt_idx]);
+          tngt_idx++;
+      }
+    }
+
+    tngt_idx = 0;
+}
 void myinit()
 {
     glClearColor(0.0, 0.0, 0.0, 0.0);   // set background color
@@ -359,20 +400,23 @@ void myinit()
     glShadeModel(GL_SMOOTH); 
 
     glGenTextures(6, texture);
-    /*texload(0,"sky2.jpg");
-    texload(1,"sky2.jpg");
-    texload(2,"sky2.jpg");
-    texload(3,"sky2.jpg");
-    texload(4,"sky2.jpg");
-    texload(5,"ground.jpg");*/
-
-
-    /*glBindTexture(GL_TEXTURE_2D, texture[0]);
-   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);*/
+    for (int i = 0; i < 6; i++){
+      texload(i, files[i]);
+    }
+    tangent = new point[g_Splines[0].numControlPoints * 1001];
+    binormal = new point[g_Splines[0].numControlPoints * 1001];
+    normal = new point[g_Splines[0].numControlPoints * 1001];
+    center = new point[g_Splines[0].numControlPoints * 1001];
+    eye = new point[g_Splines[0].numControlPoints * 1001];
+    /*tangent[0].x = 0; tangent[0].y = 0; tangent[0].z = 0;
+    point v;
+    v.x = 1; v.y = 1; v.z = 1;
+    v = make_unit(v);
+    normal[0] = cross_product(tangent[0],v);
+    binormal[0] = cross_product(normal[0],tangent[0]);
+    center[0].x = 0; center[0].y = 0; center[0].z = 0;
+    eye[0].x = 0; eye[0].y = 0; eye[0].z = 0;*/
+    fillArrays();
 }
 
 void menufunc(int value)
@@ -385,24 +429,8 @@ void menufunc(int value)
   }
 }
 
-point catmull (point p1, point p2, point p3, point p4, float u){
-  point newPoint;
-  newPoint.x = ((pow(u,3)) * (b_m_3[0]*(p1.x) + b_m_3[1]*(p2.x) + b_m_3[2]*(p3.x) + b_m_3[3]*(p4.x)))
-             + ((pow(u,2)) * (b_m_2[0]*(p1.x) + b_m_2[1]*(p2.x) + b_m_2[2]*(p3.x) + b_m_2[3]*(p4.x)))
-             + ((pow(u,1)) * (b_m_1[0]*(p1.x) + b_m_1[1]*(p2.x) + b_m_1[2]*(p3.x) + b_m_1[3]*(p4.x)))
-             + ((pow(u,0)) * (b_m_0[0]*(p1.x) + b_m_0[1]*(p2.x) + b_m_0[2]*(p3.x) + b_m_0[3]*(p4.x)));
-
-  newPoint.y = ((pow(u,3)) * (b_m_3[0]*(p1.y) + b_m_3[1]*(p2.y) + b_m_3[2]*(p3.y) + b_m_3[3]*(p4.y)))
-             + ((pow(u,2)) * (b_m_2[0]*(p1.y) + b_m_2[1]*(p2.y) + b_m_2[2]*(p3.y) + b_m_2[3]*(p4.y)))
-             + ((pow(u,1)) * (b_m_1[0]*(p1.y) + b_m_1[1]*(p2.y) + b_m_1[2]*(p3.y) + b_m_1[3]*(p4.y)))
-             + ((pow(u,0)) * (b_m_0[0]*(p1.y) + b_m_0[1]*(p2.y) + b_m_0[2]*(p3.y) + b_m_0[3]*(p4.y)));
-
-  newPoint.z = ((pow(u,3)) * (b_m_3[0]*(p1.z) + b_m_3[1]*(p2.z) + b_m_3[2]*(p3.z) + b_m_3[3]*(p4.z)))
-             + ((pow(u,2)) * (b_m_2[0]*(p1.z) + b_m_2[1]*(p2.z) + b_m_2[2]*(p3.z) + b_m_2[3]*(p4.z)))
-             + ((pow(u,1)) * (b_m_1[0]*(p1.z) + b_m_1[1]*(p2.z) + b_m_1[2]*(p3.z) + b_m_1[3]*(p4.z)))
-             + ((pow(u,0)) * (b_m_0[0]*(p1.z) + b_m_0[1]*(p2.z) + b_m_0[2]*(p3.z) + b_m_0[3]*(p4.z)));
-
-  return newPoint;
+void printPoint (point p, char* name){
+  std::cout << name << " = {" << p.x << " , " << p.y << " , " << p.z << "}" << std::endl;
 }
 
 void display()
@@ -418,8 +446,14 @@ rotation/translation/scaling */
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glLoadIdentity(); // reset transformation
 
-   gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
-
+   //gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+   gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
+            center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
+            normal[tngt_idx].x, normal[tngt_idx].y, normal[tngt_idx].z);
+   printPoint(eye[tngt_idx],"eye");
+   printPoint(center[tngt_idx], "center");
+   printPoint(normal[tngt_idx],"up");
+   tngt_idx++;
    if(g_RenderMode == SOLID_TRIANGLES)
       glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
    else if (g_RenderMode == VERTICES)
@@ -444,26 +478,7 @@ rotation/translation/scaling */
     glScaled(g_vLandScale[0], g_vLandScale[1], g_vLandScale[2]);
  
   DrawCube(0.0f,0.0f,0.0f,200.0f);
-  /*glEnable(GL_TEXTURE_2D);
 
-  glBindTexture(GL_TEXTURE_2D, texture[0]);
-   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-   glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  
-  
-  
-
-  glBegin(GL_POLYGON);
-   glTexCoord2f(1.0, 0.0);
-   glVertex3f(100.0, 100.0, 100.0);
-   glTexCoord2f(0.0, 0.0);
-   glVertex3f(-100.0, 100.0, 100.0);
-   glTexCoord2f(0.0, 1.0);
-   glVertex3f(-100.0, 100.0, -100.0);
-   glTexCoord2f(1.0, 1.0);
-   glVertex3f(100.0, 100.0, -100.0);
-   glEnd();
-  glDisable(GL_TEXTURE_2D);*/
 
   for (int i = 0; i < g_iNumOfSplines; i++){
     spline curr = g_Splines[i];
@@ -491,7 +506,7 @@ rotation/translation/scaling */
 
       p2 = curr.points[i]; p3 = curr.points[i+1];
 
-      for (float u = 0.0 ; u <= 1.0; u+= 0.0001){
+      for (float u = 0.0 ; u <= 1.0; u+= 0.001){
           point p = catmull(p1,p2,p3,p4,u);
           glColor3f(1.0, 1.0, 1.0);
           glVertex3f(p.x, p.y, p.z);
