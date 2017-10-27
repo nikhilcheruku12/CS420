@@ -20,8 +20,8 @@ int g_vMousePos[2] = {0, 0};
 int g_iLeftMouseButton = 0;    /* 1 if pressed, 0 if not */
 int g_iMiddleMouseButton = 0;
 int g_iRightMouseButton = 0;
-char* files[6] = {"sky2.jpg","sky2.jpg","sky2.jpg","sky2.jpg","ground.jpg","sky2.jpg"};
-
+//char* files[6] = {"sky2.jpg","sky2.jpg","sky2.jpg","sky2.jpg","ground.jpg","sky2.jpg"};
+char* files[6] = {"sky1.jpg","sky1.jpg","sky1.jpg","sky1.jpg","ground.jpg","sky1.jpg"};
 int screenshotNum = 0;
 
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROLSTATE;
@@ -34,9 +34,10 @@ GLuint texture[6];
 float g_vLandRotate[3] = {0.0, 0.0, 0.0};
 float g_vLandTranslate[3] = {0.0, 0.0, 0.0};
 float g_vLandScale[3] = {1.0, 1.0, 1.0};
-int a = 1;
+double a = 1;
 
 int tngt_idx = 0;
+int capacity = 0;
 /* represents one control point along the spline */
 struct point {
    double x;
@@ -157,7 +158,7 @@ point make_unit (point p){
 
   point cross_product (point u, point v){
      point product;
-      product.x = u.x * v.z - v.y * u.z;
+      product.x = u.y * v.z - v.y * u.z;
       product.y = v.x * u.z - u.x * v.z;
       product.z = u.x * v.y - v.x * u.y;
       return make_unit(product);
@@ -193,16 +194,6 @@ point getCenter (point tangent1, point catmull1){
   center1.y = catmull1.y + a*tangent1.y;
   center1.z = catmull1.z + a*tangent1.z;
   return center1;
-}
-point getTangent (float u , point p1, point p2, point p3, point p4){
-  point tangent1;
-  tangent1.x = (pow(u,2)) * (t_m_2[0]*p1.x + t_m_2[1]*p2.x + t_m_2[2]*p3.x + t_m_2[3]*p4.x) +
-               (pow(u,1)) * (t_m_1[0]*p1.x + t_m_1[1]*p2.x + t_m_1[2]*p3.x + t_m_1[3]*p4.x);
-  tangent1.y = (pow(u,2)) * (t_m_2[0]*p1.y + t_m_2[1]*p2.y + t_m_2[2]*p3.y + t_m_2[3]*p4.y) +
-               (pow(u,1)) * (t_m_1[0]*p1.y + t_m_1[1]*p2.y + t_m_1[2]*p3.y + t_m_1[3]*p4.y);
-  tangent1.z = (pow(u,2)) * (t_m_2[0]*p1.z + t_m_2[1]*p2.z + t_m_2[2]*p3.z + t_m_2[3]*p4.z) +
-               (pow(u,1)) * (t_m_1[0]*p1.z + t_m_1[1]*p2.z + t_m_1[2]*p3.z + t_m_1[3]*p4.z);
-  return make_unit(tangent1);
 }
 
 point getTangent2 (point p1, point p2, point p3, point p4, float u){
@@ -250,10 +241,10 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
         centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
 
         // right face
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
-        centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
-        centerPosX - halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
+        centerPosX + halfSideLength, centerPosY + halfSideLength, centerPosZ - halfSideLength, // top right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ - halfSideLength, // bottom right
+        centerPosX + halfSideLength, centerPosY - halfSideLength, centerPosZ + halfSideLength, // bottom left
 
         // top face
         centerPosX - halfSideLength, centerPosY + halfSideLength, centerPosZ + halfSideLength, // top left
@@ -378,16 +369,17 @@ void fillArrays (){
           if(tngt_idx == 0){
             point v; v.x = 1; v.y = 1; v.z = 1;
             v = make_unit(v);
-            normal[tngt_idx] = cross_product(v, tangent[tngt_idx]);
+            normal[tngt_idx] = cross_product(tangent[tngt_idx], v);
           }
           else{
             normal[tngt_idx] = cross_product(binormal[tngt_idx-1], tangent[tngt_idx]);
           }
           
-          binormal[tngt_idx] = cross_product(normal[tngt_idx],tangent[tngt_idx]);
+          binormal[tngt_idx] = cross_product(tangent[tngt_idx], normal[tngt_idx]);
           eye[tngt_idx] = catmull(p1,p2,p3,p4,u);
           center[tngt_idx] = getCenter(tangent[tngt_idx], eye[tngt_idx]);
           tngt_idx++;
+          capacity = tngt_idx;
       }
     }
 
@@ -440,20 +432,33 @@ void display()
   /* you may also want to precede it with your 
 rotation/translation/scaling */
 
- 
+   int index = 0;
     
     // clear buffers
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glLoadIdentity(); // reset transformation
 
    //gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
-   gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
-            center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
-            normal[tngt_idx].x, normal[tngt_idx].y, normal[tngt_idx].z);
+    gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
+             center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
+             binormal[tngt_idx].x, binormal[tngt_idx].y, binormal[tngt_idx].z);
+    // gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
+    //         center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
+    //         0, 0,1);
+    tngt_idx+=10;
+    if(tngt_idx >= capacity)
+      tngt_idx = 0;
+   // glRotatef(45.0, 0.0f, 0.0f, 0.0f);
+    // glRotatef(g_vLandRotate[0], 1.0,0.0,0.0);
+    // glRotatef(g_vLandRotate[1], 0.0,1.0,0.0);
+    // glRotatef(g_vLandRotate[2], 0.0,0.0,1.0);
+    // glTranslatef(g_vLandTranslate[0]*10, g_vLandTranslate[1]*10, g_vLandTranslate[2]*10);
+    // glScaled(g_vLandScale[0], g_vLandScale[0], g_vLandScale[0]);
+   
    printPoint(eye[tngt_idx],"eye");
    printPoint(center[tngt_idx], "center");
    printPoint(normal[tngt_idx],"up");
-   tngt_idx++;
+  // tngt_idx++;
    if(g_RenderMode == SOLID_TRIANGLES)
       glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
    else if (g_RenderMode == VERTICES)
@@ -461,21 +466,9 @@ rotation/translation/scaling */
    else   
     glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
    
-    glPushMatrix();
     // start applying the transformations
-    glTranslatef(0.0f, 0.0f, 0.0f);
-    glRotatef(45.0, 0.0f, 0.0f, 0.0f);
-    glRotatef(g_vLandRotate[0], 1.0,0.0,0.0);
-    glRotatef(g_vLandRotate[1], 0.0,1.0,0.0);
-    glRotatef(g_vLandRotate[2], 0.0,0.0,1.0);
-   
-
- 
-    glTranslatef(g_vLandTranslate[0], g_vLandTranslate[1], g_vLandTranslate[2]);
-  
-
-  
-    glScaled(g_vLandScale[0], g_vLandScale[1], g_vLandScale[2]);
+    
+    
  
   DrawCube(0.0f,0.0f,0.0f,200.0f);
 
@@ -484,6 +477,42 @@ rotation/translation/scaling */
     spline curr = g_Splines[i];
     int curr_controlpoints = curr.numControlPoints;
 
+    glBegin(GL_LINE_STRIP);
+    for (int i = 0; i < curr_controlpoints-1; i++){
+      point p1;
+      point p2;
+      point p3;
+      point p4;
+
+      if(i == 0)
+      {
+        continue;
+      } 
+
+      else if ( i + 2 >= curr_controlpoints){
+        continue;
+      }
+
+      else{
+        p1 = curr.points[i-1]; p4 = curr.points[i+2];
+      }
+
+      p2 = curr.points[i]; p3 = curr.points[i+1];
+
+      for (float u = 0.0 ; u <= 1.0; u+= 0.001){
+          //point p = catmull(p1,p2,p3,p4,u);
+          point p = eye[index];
+          glColor3f(1.0, 1.0, 1.0);
+          glVertex3f(p.x, p.y, p.z);
+          index++;
+          
+      }
+    }
+
+    glEnd();
+    /*
+    index = 0;
+    glLineWidth(3.0);
     glBegin(GL_LINES);
     for (int i = 0; i < curr_controlpoints-1; i++){
       point p1;
@@ -507,20 +536,39 @@ rotation/translation/scaling */
       p2 = curr.points[i]; p3 = curr.points[i+1];
 
       for (float u = 0.0 ; u <= 1.0; u+= 0.001){
-          point p = catmull(p1,p2,p3,p4,u);
-          glColor3f(1.0, 1.0, 1.0);
+          //point p = catmull(p1,p2,p3,p4,u);
+        if(index%100 == 0){
+          point p = eye[index];
+          glColor3f(1.0, 0.0, 0.0);
           glVertex3f(p.x, p.y, p.z);
+          point c = getCenter(tangent[index],p);
+          glVertex3f(c.x,c.y,c.z);
+
+          glColor3f(0.0, 1.0, 0.0);
+          glVertex3f(p.x, p.y, p.z);
+          point n = normal[index];
+          glVertex3f(p.x + a*n.x,p.y + a*n.y, p.z + a*n.z);
+
+           glColor3f(0.0, 0.0, 1.0);
+          glVertex3f(p.x, p.y, p.z);
+          point b = binormal[index];
+          glVertex3f(p.x + a*b.x,p.y + a*b.y, p.z + a*b.z);
+        }
+          
+
+          
+          index++;
+          
       }
     }
+    
     glEnd();
+    glLineWidth(1.0);
+      */
   }
 
-  
-  
- // glPopMatrix();
-   glPopMatrix();
-  glutSwapBuffers(); // double buffer flush
 
+  glutSwapBuffers(); // double buffer flus
 }
 
 void doIdle()
@@ -628,10 +676,10 @@ void mousebutton(int button, int state, int x, int y)
  
   switch(glutGetModifiers())
   {
-    case GLUT_ACTIVE_CTRL:
+    case GLUT_ACTIVE_SHIFT:
       g_ControlState = TRANSLATE;
       break;
-    case GLUT_ACTIVE_SHIFT:
+    case GLUT_ACTIVE_CTRL:
       g_ControlState = SCALE;
       break;
     default:
@@ -664,7 +712,7 @@ int main (int argc, char ** argv)
   */
     
     // request double buffer
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGB);
     
     // set window size
     glutInitWindowSize(640, 480);
