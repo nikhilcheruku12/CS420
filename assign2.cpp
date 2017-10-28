@@ -21,7 +21,7 @@ int g_iLeftMouseButton = 0;    /* 1 if pressed, 0 if not */
 int g_iMiddleMouseButton = 0;
 int g_iRightMouseButton = 0;
 //char* files[6] = {"sky2.jpg","sky2.jpg","sky2.jpg","sky2.jpg","ground.jpg","sky2.jpg"};
-char* files[6] = {"posz.jpg","negz.jpg","negx.jpg","posx.jpg","negy.jpg","posy.jpg"};
+char* files[7] = {"posz.jpg","negz.jpg","negx.jpg","posx.jpg","negy.jpg","posy.jpg","wood.jpg"};
 int screenshotNum = 0;
 
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROLSTATE;
@@ -270,19 +270,6 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
        glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
       
       int i = j*12;
-      
-
-      /*glBegin(GL_POLYGON);
-       glTexCoord2f(1.0, 0.0);
-       glVertex3f(vertices2[i], vertices2[i+1], vertices2[i+2]);
-       glTexCoord2f(0.0, 0.0);
-       glVertex3f(vertices2[i+3], vertices2[i+4], vertices2[i+5]);
-       glTexCoord2f(0.0, 1.0);
-       glVertex3f(vertices2[i+6], vertices2[i+7], vertices2[i+8]);
-       glTexCoord2f(1.0, 1.0);
-       glVertex3f(vertices2[i+9], vertices2[i+10], vertices2[i+11]);
-       glEnd();
-      glDisable(GL_TEXTURE_2D);*/
 
        if( j == 0 || j == 3){
         glBegin(GL_POLYGON);
@@ -331,6 +318,44 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
 
 }
 
+void drawCube2 (GLfloat vertices2[], GLuint texture1){
+
+  
+     // texload(j,files[j]);
+      glEnable(GL_TEXTURE_2D);
+
+      glBindTexture(GL_TEXTURE_2D, texture1);
+       glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+       glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE, GL_REPLACE);
+      
+      
+
+      
+        glBegin(GL_POLYGON);
+         glTexCoord2f(0.0, 1.0);
+         glVertex3f(vertices2[0], vertices2[1], vertices2[2]);
+         glTexCoord2f(1.0, 1.0);
+         glVertex3f(vertices2[3], vertices2[4], vertices2[5]);
+         glTexCoord2f(1.0, 0.0);
+         glVertex3f(vertices2[6], vertices2[7], vertices2[8]);
+         glTexCoord2f(0.0, 0.0);
+         glVertex3f(vertices2[9], vertices2[10], vertices2[11]);
+
+         glTexCoord2f(0.0, 1.0);
+         glVertex3f(vertices2[12], vertices2[13], vertices2[14]);
+         glTexCoord2f(1.0, 1.0);
+         glVertex3f(vertices2[15], vertices2[16], vertices2[17]);
+         glTexCoord2f(1.0, 0.0);
+         glVertex3f(vertices2[18], vertices2[19], vertices2[20]);
+         glTexCoord2f(0.0, 0.0);
+         glVertex3f(vertices2[21], vertices2[22], vertices2[23]);
+         glEnd();
+        glDisable(GL_TEXTURE_2D);
+     
+      
+       
+ 
+}
 
 /* Write a screenshot to the specified filename */
 void saveScreenshot (char *filename)
@@ -434,8 +459,8 @@ void myinit()
     glEnable(GL_DEPTH_TEST);            // enable depth buffering
     glShadeModel(GL_SMOOTH); 
 
-    glGenTextures(6, texture);
-    for (int i = 0; i < 6; i++){
+    glGenTextures(7, texture);
+    for (int i = 0; i < 7; i++){
       texload(i, files[i]);
     }
     tangent = new point[g_Splines[0].numControlPoints * 1001];
@@ -465,7 +490,65 @@ void menufunc(int value)
 }
 
 void printPoint (point p, char* name){
-  std::cout << name << " = {" << p.x << " , " << p.y << " , " << p.z << "}" << std::endl;
+  //std::cout << name << " = {" << p.x << " , " << p.y << " , " << p.z << "}" << std::endl;
+}
+
+float* getVertices (int index){
+  //float toreturn[24];
+  double fa = 0.07;
+  point p1 = eye[index];
+  point p2 = eye[index];
+
+  point n = normal[index];
+  point b = binormal[index];
+  p2.z+=2;
+  GLfloat toreturn[]= {
+                p1.x + fa*(n.x-b.x) , p1.y + fa*(n.y-b.y), p1.z + fa*(n.z-b.z),
+                p1.x + fa*(n.x+b.x) , p1.y + fa*(n.y+b.y), p1.z + fa*(n.z+b.z),
+                p1.x - fa*(n.x-b.x) , p1.y - fa*(n.y-b.y), p1.z - fa*(n.z-b.z),
+                p1.x - fa*(n.x+b.x) , p1.y - fa*(n.y+b.y), p1.z - fa*(n.z+b.z),
+
+                p2.x + fa*(n.x-b.x) , p2.y + fa*(n.y-b.y), p2.z + fa*(n.z-b.z),
+                p2.x + fa*(n.x+b.x) , p2.y + fa*(n.y+b.y), p2.z + fa*(n.z+b.z),
+                p2.x - fa*(n.x-b.x) , p2.y - fa*(n.y-b.y), p2.z - fa*(n.z-b.z),
+                p2.x - fa*(n.x+b.x) , p2.y - fa*(n.y+b.y), p2.z - fa*(n.z+b.z)
+  };
+  return toreturn;
+}
+
+void drawTracks(){
+
+  int index = 0;
+  double fa = 0.07;
+  spline curr = g_Splines[0];
+  int curr_controlpoints =  g_Splines[0].numControlPoints;
+  for (int i = 0; i < curr_controlpoints-1; i++){
+      point p1;
+      point p2;
+      point p3;
+      point p4;
+
+      if(i == 0)
+      {
+        continue;
+      } 
+
+      else if ( i + 2 >= curr_controlpoints){
+        continue;
+      }
+
+      else{
+        p1 = curr.points[i-1]; p4 = curr.points[i+2];
+      }
+
+      p2 = curr.points[i]; p3 = curr.points[i+1];
+
+      for (float u = 0.0 ; u <= 1.0; u+= 0.001){
+          float* temp = getVertices(index);
+          drawCube2(temp,texture[6]);
+          index++;
+      }
+    }
 }
 
 void display()
@@ -481,10 +564,10 @@ rotation/translation/scaling */
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glLoadIdentity(); // reset transformation
 
-   gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
-   /* gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
+  // gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+    gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
              center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
-             binormal[tngt_idx].x, binormal[tngt_idx].y, binormal[tngt_idx].z);*/
+             binormal[tngt_idx].x, binormal[tngt_idx].y, binormal[tngt_idx].z);
     // gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
     //         center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
     //         0, 0,1);
@@ -553,10 +636,11 @@ rotation/translation/scaling */
     }
 
     glEnd();
-    /*
+
+
+  
     index = 0;
-    glLineWidth(3.0);
-    glBegin(GL_LINES);
+    glBegin(GL_LINE_STRIP);
     for (int i = 0; i < curr_controlpoints-1; i++){
       point p1;
       point p2;
@@ -580,39 +664,64 @@ rotation/translation/scaling */
 
       for (float u = 0.0 ; u <= 1.0; u+= 0.001){
           //point p = catmull(p1,p2,p3,p4,u);
-        if(index%100 == 0){
           point p = eye[index];
-          glColor3f(1.0, 0.0, 0.0);
+          p.z += 2;
+          glColor3f(1.0, 1.0, 1.0);
           glVertex3f(p.x, p.y, p.z);
-          point c = getCenter(tangent[index],p);
-          glVertex3f(c.x,c.y,c.z);
-
-          glColor3f(0.0, 1.0, 0.0);
-          glVertex3f(p.x, p.y, p.z);
-          point n = normal[index];
-          glVertex3f(p.x + a*n.x,p.y + a*n.y, p.z + a*n.z);
-
-           glColor3f(0.0, 0.0, 1.0);
-          glVertex3f(p.x, p.y, p.z);
-          point b = binormal[index];
-          glVertex3f(p.x + a*b.x,p.y + a*b.y, p.z + a*b.z);
-        }
-          
-
-          
           index++;
           
       }
     }
-    
+
     glEnd();
-    glLineWidth(1.0);
-      */
+
+
+    index = 0;
+    glBegin(GL_LINE_STRIP);
+    for (int i = 0; i < curr_controlpoints-1; i++){
+      point p1;
+      point p2;
+      point p3;
+      point p4;
+
+      if(i == 0)
+      {
+        continue;
+      } 
+
+      else if ( i + 2 >= curr_controlpoints){
+        continue;
+      }
+
+      else{
+        p1 = curr.points[i-1]; p4 = curr.points[i+2];
+      }
+
+      p2 = curr.points[i]; p3 = curr.points[i+1];
+
+      for (float u = 0.0 ; u <= 1.0; u+= 0.001){
+          //point p = catmull(p1,p2,p3,p4,u);
+          point p = eye[index];
+          p.z += 2;
+          glColor3f(1.0, 1.0, 1.0);
+          glVertex3f(p.x, p.y, p.z);
+          index++;
+          
+      }
+    }
+
+    glEnd();
   }
+
+  //drawTracks();
 
 
   glutSwapBuffers(); // double buffer flus
 }
+
+
+
+
 
 void doIdle()
 {
