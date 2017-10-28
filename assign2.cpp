@@ -21,7 +21,7 @@ int g_iLeftMouseButton = 0;    /* 1 if pressed, 0 if not */
 int g_iMiddleMouseButton = 0;
 int g_iRightMouseButton = 0;
 //char* files[6] = {"sky2.jpg","sky2.jpg","sky2.jpg","sky2.jpg","ground.jpg","sky2.jpg"};
-char* files[6] = {"sky1.jpg","sky1.jpg","sky1.jpg","sky1.jpg","ground.jpg","sky1.jpg"};
+char* files[6] = {"posz.jpg","negz.jpg","negx.jpg","posx.jpg","negy.jpg","posy.jpg"};
 int screenshotNum = 0;
 
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROLSTATE;
@@ -272,7 +272,7 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
       int i = j*12;
       
 
-      glBegin(GL_POLYGON);
+      /*glBegin(GL_POLYGON);
        glTexCoord2f(1.0, 0.0);
        glVertex3f(vertices2[i], vertices2[i+1], vertices2[i+2]);
        glTexCoord2f(0.0, 0.0);
@@ -282,7 +282,50 @@ void DrawCube(GLfloat centerPosX, GLfloat centerPosY, GLfloat centerPosZ, GLfloa
        glTexCoord2f(1.0, 1.0);
        glVertex3f(vertices2[i+9], vertices2[i+10], vertices2[i+11]);
        glEnd();
+      glDisable(GL_TEXTURE_2D);*/
+
+       if( j == 0 || j == 3){
+        glBegin(GL_POLYGON);
+         glTexCoord2f(0.0, 1.0);
+         glVertex3f(vertices2[i], vertices2[i+1], vertices2[i+2]);
+         glTexCoord2f(1.0, 1.0);
+         glVertex3f(vertices2[i+3], vertices2[i+4], vertices2[i+5]);
+         glTexCoord2f(1.0, 0.0);
+         glVertex3f(vertices2[i+6], vertices2[i+7], vertices2[i+8]);
+         glTexCoord2f(0.0, 0.0);
+         glVertex3f(vertices2[i+9], vertices2[i+10], vertices2[i+11]);
+         glEnd();
+        glDisable(GL_TEXTURE_2D);
+       }
+
+       else if ( j== 1 || j == 2){
+        glBegin(GL_POLYGON);
+       glTexCoord2f(1.0, 1.0);
+       glVertex3f(vertices2[i], vertices2[i+1], vertices2[i+2]);
+       glTexCoord2f(0.0, 1.0);
+       glVertex3f(vertices2[i+3], vertices2[i+4], vertices2[i+5]);
+       glTexCoord2f(0.0, 0.0);
+       glVertex3f(vertices2[i+6], vertices2[i+7], vertices2[i+8]);
+       glTexCoord2f(1.0, 0.0);
+       glVertex3f(vertices2[i+9], vertices2[i+10], vertices2[i+11]);
+       glEnd();
       glDisable(GL_TEXTURE_2D);
+       }
+
+       else {
+        glBegin(GL_POLYGON);
+          glTexCoord2f(1.0, 0.0);
+       glVertex3f(vertices2[i], vertices2[i+1], vertices2[i+2]);
+       glTexCoord2f(0.0, 0.0);
+       glVertex3f(vertices2[i+3], vertices2[i+4], vertices2[i+5]);
+       glTexCoord2f(0.0, 1.0);
+       glVertex3f(vertices2[i+6], vertices2[i+7], vertices2[i+8]);
+       glTexCoord2f(1.0, 1.0);
+       glVertex3f(vertices2[i+9], vertices2[i+10], vertices2[i+11]);
+       glEnd();
+      glDisable(GL_TEXTURE_2D);
+       }
+       
     }
 
 
@@ -438,22 +481,22 @@ rotation/translation/scaling */
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glLoadIdentity(); // reset transformation
 
-   //gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
-    gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
+   gluLookAt(0.0, 0.0,32.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+   /* gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
              center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
-             binormal[tngt_idx].x, binormal[tngt_idx].y, binormal[tngt_idx].z);
+             binormal[tngt_idx].x, binormal[tngt_idx].y, binormal[tngt_idx].z);*/
     // gluLookAt(eye[tngt_idx].x, eye[tngt_idx].y,eye[tngt_idx].z, 
     //         center[tngt_idx].x,center[tngt_idx].y, center[tngt_idx].z, 
     //         0, 0,1);
     tngt_idx+=10;
     if(tngt_idx >= capacity)
       tngt_idx = 0;
-   // glRotatef(45.0, 0.0f, 0.0f, 0.0f);
-    // glRotatef(g_vLandRotate[0], 1.0,0.0,0.0);
-    // glRotatef(g_vLandRotate[1], 0.0,1.0,0.0);
-    // glRotatef(g_vLandRotate[2], 0.0,0.0,1.0);
-    // glTranslatef(g_vLandTranslate[0]*10, g_vLandTranslate[1]*10, g_vLandTranslate[2]*10);
-    // glScaled(g_vLandScale[0], g_vLandScale[0], g_vLandScale[0]);
+    //glRotatef(45.0, 0.0f, 0.0f, 0.0f);
+     glRotatef(g_vLandRotate[0], 1.0,0.0,0.0);
+     glRotatef(g_vLandRotate[1], 0.0,1.0,0.0);
+     glRotatef(g_vLandRotate[2], 0.0,0.0,1.0);
+     glTranslatef(g_vLandTranslate[0]*10, g_vLandTranslate[1]*10, g_vLandTranslate[2]*10);
+     glScaled(g_vLandScale[0], g_vLandScale[0], g_vLandScale[0]);
    
    printPoint(eye[tngt_idx],"eye");
    printPoint(center[tngt_idx], "center");
